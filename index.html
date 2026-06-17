@@ -1,10 +1,65 @@
 <!DOCTYPE html>
-<script>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JJ snake game 2.0</title></title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: radial-gradient(circle, #1a1a2e 0%, #0f0c1b 100%);
+            color: #fff;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            /* 阻止 iPad 浏览器自带的橡皮筋回弹刷新手势 */
+            touch-action: none; 
+        }
+        #game-container {
+            position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        canvas {
+            display: block;
+            background: #110e1c;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            pointer-events: none;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="ui-layer">SCORE: <span id="score">000</span></div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    </div>
+
+    <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreEl = document.getElementById('score');
 
-        // --- 核心配置 ---
+        // --- 核心变量 ---
         let snake = [
             {x: 400, y: 300},
             {x: 385, y: 300},
@@ -18,7 +73,6 @@
         let targetAngle = 0;   
         let score = 0;
 
-        // 食物属性
         let food = {
             x: 0,
             y: 0,
@@ -31,23 +85,23 @@
             food.y = Math.random() * (canvas.height - 100) + 50;
         }
 
-        // 初始化食物
+        // 初始化生成第一个食物
         respawnFood();
 
         // --- 核心逻辑：数据更新 ---
         function update() {
-            // 1. 角度平滑过渡
+            // 角度平滑漂移过渡
             let angleDiff = targetAngle - angle;
             angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
             angle += angleDiff * 0.2; 
 
-            // 2. 计算蛇头新位置
+            // 计算蛇头位置
             let head = {
                 x: snake[0].x + Math.cos(angle) * speed,
                 y: snake[0].y + Math.sin(angle) * speed
             };
 
-            // 穿墙检测
+            // 穿墙判定
             if (head.x > canvas.width) head.x = 0;
             if (head.x < 0) head.x = canvas.width;
             if (head.y > canvas.height) head.y = 0;
@@ -55,7 +109,7 @@
 
             snake.unshift(head);
 
-            // 3. 碰撞检测：吃到食物
+            // 碰撞检测：吃食物
             let dx = head.x - food.x;
             let dy = head.y - food.y;
             let distance = Math.sqrt(dx * dx + dy * dy); 
@@ -64,12 +118,12 @@
                 score += 10;
                 scoreEl.innerText = score.toString().padStart(3, '0');
                 respawnFood();
-                speed += 0.1; // 逐渐变快
+                speed += 0.1; 
             } else {
                 snake.pop();
             }
 
-            // 4. 自撞检测（从第15节开始算，给转弯留出空间）
+            // 自撞检测（前15节不检测，防止转弯直接卡死）
             for (let i = 15; i < snake.length; i++) {
                 let sDx = head.x - snake[i].x;
                 let sDy = head.y - snake[i].y;
@@ -79,7 +133,7 @@
                 }
             }
 
-            // 食物呼吸动效
+            // 食物呼吸灯动效
             food.pulse = 1 + Math.sin(Date.now() * 0.005) * 0.2;
         }
 
@@ -101,10 +155,11 @@
 
         // --- 核心逻辑：画面渲染 ---
         function draw() {
+            // 带有微弱半透明的清除，形成科幻尾迹
             ctx.fillStyle = 'rgba(17, 14, 28, 0.3)'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 绘蛇
+            // 绘制蛇身
             snake.forEach((segment, index) => {
                 ctx.beginPath();
                 ctx.arc(segment.x, segment.y, radius * (1 - index/snake.length * 0.3), 0, Math.PI * 2); 
@@ -116,7 +171,7 @@
                 ctx.shadowBlur = 0; 
             });
 
-            // 绘食物
+            // 绘制粉色发光食物
             ctx.beginPath();
             let currentFoodRadius = food.radius * food.pulse;
             ctx.arc(food.x, food.y, currentFoodRadius, 0, Math.PI * 2);
@@ -127,26 +182,28 @@
             ctx.shadowBlur = 0; 
         }
 
-        // --- 游戏主循环 ---
+        // --- 游戏循环 ---
         function loop() {
-            update(); // 现在的循环变得非常干净
+            update(); 
             draw();
             requestAnimationFrame(loop);
         }
 
-        // --- 键盘监听 ---
+        // --- 键盘监听（兼容外接键盘） ---
         window.addEventListener('keydown', (e) => {
             switch(e.key) {
                 case 'ArrowUp':    targetAngle = -Math.PI / 2; break;
                 case 'ArrowDown':  targetAngle = Math.PI / 2; break;
                 case 'ArrowLeft':  targetAngle = Math.PI; break;
                 case 'ArrowRight': targetAngle = 0; break;
-                            // --- 新增：iPad 触屏手势监听 ---
+            }
+        });
+
+        // --- iPad 纯触屏滑动手势控制（全屏可滑，360度方向漂移） ---
         let touchStartX = 0;
         let touchStartY = 0;
 
         window.addEventListener('touchstart', (e) => {
-            // 记录手指刚碰屏幕时的坐标
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
         }, { passive: true });
@@ -157,23 +214,18 @@
             let touchEndX = e.touches[0].clientX;
             let touchEndY = e.touches[0].clientY;
 
-            // 计算滑动的 x 和 y 轴距离
             let dx = touchEndX - touchStartX;
             let dy = touchEndY - touchStartY;
 
-            // 只有当滑动距离大于 30 像素时才触发转向，防止误触
-            if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
-                // 利用数学公式 Math.atan2 直接算出手指滑动的绝对角度
-                targetAngle = Math.atan2(dy, dx);
-                
-                // 重置起点，方便连续滑动转向
+            if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
+                targetAngle = Math.atan2(dy, dx); // 顺着手指滑动的任意角度游动
                 touchStartX = touchEndX;
                 touchStartY = touchEndY;
             }
         }, { passive: true });
-            }
-        });
 
-        // 启动
+        // 启动游戏
         loop();
     </script>
+</body>
+</html>
