@@ -1,7 +1,7 @@
 name: Deploy Neon Snake
 on:
   push:
-    branches: ["master"]
+    branches: ["main"]
 permissions:
   contents: read
   pages: write
