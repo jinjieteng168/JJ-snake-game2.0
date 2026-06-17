@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JJ snake game 2.0</title>
+    <style>
+        body {
+            background: radial-gradient(circle, #1a1a2e 0%, #0f0f1a 100%);
+            color: #fff;
+            text-align: center;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        .scoreboard {
+            display: flex;
+            gap: 30px;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00f2fe;
+            margin-bottom: 10px;
+        }
+        canvas {
+            background-color: rgba(20, 20, 35, 0.8);
+            border: 3px solid #00f2fe;
+            border-radius: 15px;
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.5);
+            max-width: 95vw;
+            max-height: 50vh;
+        }
+        .controls {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 75px);
+            grid-template-rows: repeat(2, 75px);
+            gap: 12px;
+        }
+        button {
+            width: 75px;
+            height: 75px;
+            font-size: 28px;
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+            transition: all 0.1s ease;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        button:active {
+            transform: scale(0.9);
+            filter: brightness(1.2);
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.8);
+        }
+        .up { grid-column: 2; grid-row: 1; }
+        .left { grid-column: 1; grid-row: 2; }
+        .down { grid-column: 2; grid-row: 2; }
+        .right { grid-column: 3; grid-row: 2; }
+    </style>
+</head>
+<body>
+
+    <div class="scoreboard">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>HIGH: <span id="highScore">0</span></div>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <div class="controls">
+        <button class="up" ontouchstart="changeDirection('UP')" onclick="changeDirection('UP')">▲</button>
+        <button class="left" ontouchstart="changeDirection('LEFT')" onclick="changeDirection('LEFT')">◀</button>
+        <button class="down" ontouchstart="changeDirection('DOWN')" onclick="changeDirection('DOWN')">▼</button>
+        <button class="right" ontouchstart="changeDirection('RIGHT')" onclick="changeDirection('RIGHT')">▶</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const box = 20;
+        let snake = [{ x: 9 * box, y: 9 * box }, { x: 8 * box, y: 9 * box }];
+        let d = "RIGHT";
+        let nextD = "RIGHT";
+        let score = 0;
+        let highScore = localStorage.getItem("snake_high") || 0;
+        document.getElementById("highScore").innerText = highScore;
+
+        let food = getRandomFoodPos();
+        let particles = []; // 用于存放烟花粒子
+
+        function getRandomFoodPos() {
+            return {
+                x: Math.floor(Math.random() * (canvas.width / box)) * box,
+                y: Math.floor(Math.random() * (canvas.height / box)) * box
+            };
+        }
+
+        function changeDirection(dir) {
+            if (dir === "LEFT" && d !== "RIGHT") nextD = "LEFT";
+            if (dir === "UP" && d !== "DOWN") nextD = "UP";
+            if (dir === "RIGHT" && d !== "LEFT") nextD = "RIGHT";
+            if (dir === "DOWN" && d !== "UP") nextD = "DOWN";
+        }
+
+        // 创建爆炸粒子特效
+        function createParticles(x, y) {
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x + box / 2,
+                    y: y + box / 2,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    alpha: 1,
+                    color: `hsl(${Math.random() * 360}, 100%, 60%)`
+                });
+            }
+        }
+
+        function draw() {
+            d = nextD;
+            // 清屏
+            ctx.fillStyle = "rgba(15, 15, 26, 0.3)"; // 留下一小点拖尾阴影
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 画发光食物
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#ff007f";
+            ctx.fillStyle = "#ff007f";
+            ctx.beginPath();
+            ctx.arc(food.x + box/2, food.y + box/2, box/2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 画发光蛇身
+            snake.forEach((segment, index) => {
+                ctx.shadowBlur = index === 0 ? 20 : 10;
+                ctx.shadowColor = index === 0 ? "#00f2fe" : "#9b51e0";
+                ctx.fillStyle = index === 0 ? "#00f2fe" : "#9b51e0";
+                
+                // 让蛇身变成带圆角的发光方块
+                ctx.beginPath();
+                ctx.roundRect(segment.x + 1, segment.y + 1, box - 2, box - 2, [5]);
+                ctx.fill();
+            });
+            ctx.shadowBlur = 0; // 重置发光，避免影响其他绘制
+
+            // 绘制并更新烟花粒子
+            particles.forEach((p, i) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.04;
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.globalAlpha = p.alpha;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, 4, 4);
+                }
+            });
+            ctx.globalAlpha = 1.0; // 重置透明度
+
+            // 移动计算
+            let snakeX = snake[0].x;
+            let snakeY = snake[0].y;
+
+            if (d === "LEFT") snakeX -= box;
+            if (d === "UP") snakeY -= box;
+            if (d === "RIGHT") snakeX += box;
+            if (d === "DOWN") snakeY += box;
+
+            // 撞墙检测
+            if (snakeX < 0 || snakeX >= canvas.width || snakeY < 0 || snakeY >= canvas.height) {
+                gameOver();
+                return;
+            }
+
+            // 撞自己检测
+            for (let i = 0; i < snake.length; i++) {
+                if (snakeX === snake[i].x && snakeY === snake[i].y) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            let newHead = { x: snakeX, y: snakeY };
+
+            // 吃食物检测
+            if (snakeX === food.x && snakeY === food.y) {
+                score += 10;
+                document.getElementById("score").innerText = score;
+                createParticles(food.x, food.y); // 触发粒子烟花
+                food = getRandomFoodPos();
+            } else {
+                snake.pop();
+            }
+
+            snake.unshift(newHead);
+        }
+
+        function gameOver() {
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem("snake_high", highScore);
+                document.getElementById("highScore").innerText = highScore;
+                alert("congratulations 🥳: " + score);
+            } else {
+                alert("End,score:: " + score);
+            }
+            // 重置
+            snake = [{ x: 9 * box, y: 9 * box }, { x: 8 * box, y: 9 * box }];
+            d = "RIGHT";
+            nextD = "RIGHT";
+            score = 0;
+            document.getElementById("score").innerText = score;
+        }
+
+        // 调整速度为中等舒适速度
+        setInterval(draw, 140);
+    </script>
+</body>
+</html>
