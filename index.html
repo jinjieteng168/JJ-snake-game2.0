@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JJ snake game 2.0</title></title>
+    <title>卡通大眼贪吃蛇</title>
     <style>
         * {
             box-sizing: border-box;
@@ -20,8 +20,7 @@
             justify-content: center;
             min-height: 100vh;
             overflow: hidden;
-            /* 阻止 iPad 浏览器自带的橡皮筋回弹刷新手势 */
-            touch-action: none; 
+            touch-action: none; /* 阻止 iPad 自带的划动回弹刷新 */
         }
         #game-container {
             position: relative;
@@ -73,41 +72,42 @@
         let targetAngle = 0;   
         let score = 0;
 
+        // 卡通食物属性
         let food = {
-    x: 0,
-    y: 0,
-    radius: 16, // 把碰撞半径放大一点，因为卡通图标比较大
-    pulse: 1,
-    type: '🍎'   // 新增：记录当前食物的图标
-};
+            x: 0,
+            y: 0,
+            radius: 16, // 碰撞半径稍微放大，适应 Emoji 的大小
+            pulse: 1,
+            type: '🍎'   // 当前的食物图标
+        };
 
-// 各种卡通食物池
-const foodPool = ['🍎', '🍌', '🍓', '🍩', '🍕', '🍇', '🍉', '🥑', '🍔', '🍟'];
+        // 随机卡通食物池
+        const foodPool = ['🍎', '🍌', '🍓', '🍩', '🍕', '🍇', '🍉', '🥑', '🍔', '🍟', '🍦', '🍰'];
 
         function respawnFood() {
-    food.x = Math.random() * (canvas.width - 100) + 50;
-    food.y = Math.random() * (canvas.height - 100) + 50;
-    // 每次刷新，随机挑一个不同的食物图标！
-    food.type = foodPool[Math.floor(Math.random() * foodPool.length)];
-}
+            food.x = Math.random() * (canvas.width - 100) + 50;
+            food.y = Math.random() * (canvas.height - 100) + 50;
+            // 每次生成随机换一个食物
+            food.type = foodPool[Math.floor(Math.random() * foodPool.length)];
+        }
 
-        // 初始化生成第一个食物
+        // 初始化食物
         respawnFood();
 
         // --- 核心逻辑：数据更新 ---
         function update() {
-            // 角度平滑漂移过渡
+            // 角度平滑过渡
             let angleDiff = targetAngle - angle;
             angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
             angle += angleDiff * 0.2; 
 
-            // 计算蛇头位置
+            // 计算蛇头新位置
             let head = {
                 x: snake[0].x + Math.cos(angle) * speed,
                 y: snake[0].y + Math.sin(angle) * speed
             };
 
-            // 穿墙判定
+            // 穿墙检测
             if (head.x > canvas.width) head.x = 0;
             if (head.x < 0) head.x = canvas.width;
             if (head.y > canvas.height) head.y = 0;
@@ -124,12 +124,12 @@ const foodPool = ['🍎', '🍌', '🍓', '🍩', '🍕', '🍇', '🍉', '🥑'
                 score += 10;
                 scoreEl.innerText = score.toString().padStart(3, '0');
                 respawnFood();
-                speed += 0.1; 
+                speed += 0.1; // 慢慢加速
             } else {
                 snake.pop();
             }
 
-            // 自撞检测（前15节不检测，防止转弯直接卡死）
+            // 自撞检测（从第15节开始，留出转弯半径）
             for (let i = 15; i < snake.length; i++) {
                 let sDx = head.x - snake[i].x;
                 let sDy = head.y - snake[i].y;
@@ -139,8 +139,8 @@ const foodPool = ['🍎', '🍌', '🍓', '🍩', '🍕', '🍇', '🍉', '🥑'
                 }
             }
 
-            // 食物呼吸灯动效
-            food.pulse = 1 + Math.sin(Date.now() * 0.005) * 0.2;
+            // 食物缩放呼吸动效
+            food.pulse = 1 + Math.sin(Date.now() * 0.005) * 0.15;
         }
 
         // 游戏重置
@@ -160,35 +160,33 @@ const foodPool = ['🍎', '🍌', '🍓', '🍩', '🍕', '🍇', '🍉', '🥑'
         }
 
         // --- 核心逻辑：画面渲染 ---
-// --- 核心逻辑：画面渲染 ---
         function draw() {
-            // 纯黑背景，取消科幻拖尾，让卡通画面更干净
+            // 卡通风格用纯色清理画布，画面更干净
             ctx.fillStyle = '#110e1c'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 1. 绘制卡通蛇身
+            // 1. 绘制蛇身
             snake.forEach((segment, index) => {
                 ctx.beginPath();
                 
                 if (index === 0) {
-                    // 【这是蛇头】
-                    ctx.arc(segment.x, segment.y, radius * 1.3, 0, Math.PI * 2); // 蛇头稍微大一点
-                    ctx.fillStyle = '#4caf50'; // 活泼的卡通绿
+                    // 【蛇头】
+                    ctx.arc(segment.x, segment.y, radius * 1.3, 0, Math.PI * 2); // 蛇头大一圈
+                    ctx.fillStyle = '#4caf50'; // 卡通绿
                     ctx.fill();
 
-                    // 给蛇头画上可爱的卡通眼睛
-                    // 根据当前运动的 angle（弧度）来计算眼睛的位置，让它看向前进方向
-                    let eyeOffsetAngle = 0.5; // 左右两只眼睛的角度偏离
+                    // 绘制一双会跟着前进方向转动的大眼睛
+                    let eyeOffsetAngle = 0.5; // 左右眼张开角度
                     
                     // 左眼
                     let leftEyeX = segment.x + Math.cos(angle - eyeOffsetAngle) * 10;
                     let leftEyeY = segment.y + Math.sin(angle - eyeOffsetAngle) * 10;
                     ctx.beginPath();
-                    ctx.arc(leftEyeX, leftEyeY, 4, 0, Math.PI * 2);
+                    ctx.arc(leftEyeX, leftEyeY, 5, 0, Math.PI * 2);
                     ctx.fillStyle = '#ffffff';
                     ctx.fill();
-                    ctx.beginPath(); // 瞳孔
-                    ctx.arc(leftEyeX, leftEyeY, 2, 0, Math.PI * 2);
+                    ctx.beginPath(); // 左瞳孔
+                    ctx.arc(leftEyeX, leftEyeY, 2.5, 0, Math.PI * 2);
                     ctx.fillStyle = '#000000';
                     ctx.fill();
 
@@ -196,49 +194,37 @@ const foodPool = ['🍎', '🍌', '🍓', '🍩', '🍕', '🍇', '🍉', '🥑'
                     let rightEyeX = segment.x + Math.cos(angle + eyeOffsetAngle) * 10;
                     let rightEyeY = segment.y + Math.sin(angle + eyeOffsetAngle) * 10;
                     ctx.beginPath();
-                    ctx.arc(rightEyeX, rightEyeY, 4, 0, Math.PI * 2);
+                    ctx.arc(rightEyeX, rightEyeY, 5, 0, Math.PI * 2);
                     ctx.fillStyle = '#ffffff';
                     ctx.fill();
-                    ctx.beginPath(); // 瞳孔
-                    ctx.arc(rightEyeX, rightEyeY, 2, 0, Math.PI * 2);
+                    ctx.beginPath(); // 右瞳孔
+                    ctx.arc(rightEyeX, rightEyeY, 2.5, 0, Math.PI * 2);
                     ctx.fillStyle = '#000000';
                     ctx.fill();
 
                 } else {
-                    // 【这是蛇身】
-                    // 身体随着往后稍微变细一点点，看起来更像蛇
+                    // 【蛇身】
+                    // 身体越往后越细一点
                     let bodyRadius = radius * (1 - index / (snake.length + 10));
                     ctx.arc(segment.x, segment.y, bodyRadius, 0, Math.PI * 2);
                     
-                    // 让身体呈现浅绿、深绿相间的卡通花纹
+                    // 深绿和浅绿相间的卡通斑马纹身体
                     ctx.fillStyle = index % 2 === 0 ? '#81c784' : '#4caf50';
                     ctx.fill();
                 }
             });
 
-            // 2. 绘制卡通食物（Emoji）
+            // 2. 绘制随机 Emoji 食物
             ctx.save();
             ctx.translate(food.x, food.y);
-            // 给食物加一点卡通的呼吸缩放动画
             let currentScale = food.pulse;
-            ctx.scale(currentScale, currentScale);
+            ctx.scale(currentScale, currentScale); // 呼吸动效
             
-            // 绘制文字/Emoji 居中对齐
-            ctx.font = "32px serif";
+            ctx.font = "34px serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(food.type, 0, 0); // 绘制当前的随机卡通食物
+            ctx.fillText(food.type, 0, 0); 
             ctx.restore();
-        }
-            // 绘制粉色发光食物
-            ctx.beginPath();
-            let currentFoodRadius = food.radius * food.pulse;
-            ctx.arc(food.x, food.y, currentFoodRadius, 0, Math.PI * 2);
-            ctx.fillStyle = '#ff2a74';
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = '#ff2a74';
-            ctx.fill();
-            ctx.shadowBlur = 0; 
         }
 
         // --- 游戏循环 ---
@@ -248,7 +234,7 @@ const foodPool = ['🍎', '🍌', '🍓', '🍩', '🍕', '🍇', '🍉', '🥑'
             requestAnimationFrame(loop);
         }
 
-        // --- 键盘监听（兼容外接键盘） ---
+        // --- 键盘监听 ---
         window.addEventListener('keydown', (e) => {
             switch(e.key) {
                 case 'ArrowUp':    targetAngle = -Math.PI / 2; break;
@@ -258,7 +244,7 @@ const foodPool = ['🍎', '🍌', '🍓', '🍩', '🍕', '🍇', '🍉', '🥑'
             }
         });
 
-        // --- iPad 纯触屏滑动手势控制（全屏可滑，360度方向漂移） ---
+        // --- iPad 触屏手势监听 ---
         let touchStartX = 0;
         let touchStartY = 0;
 
@@ -276,14 +262,15 @@ const foodPool = ['🍎', '🍌', '🍓', '🍩', '🍕', '🍇', '🍉', '🥑'
             let dx = touchEndX - touchStartX;
             let dy = touchEndY - touchStartY;
 
+            // 滑动超过 20 像素就改变蛇的前进方向
             if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
-                targetAngle = Math.atan2(dy, dx); // 顺着手指滑动的任意角度游动
+                targetAngle = Math.atan2(dy, dx); 
                 touchStartX = touchEndX;
                 touchStartY = touchEndY;
             }
         }, { passive: true });
 
-        // 启动游戏
+        // 启动
         loop();
     </script>
 </body>
