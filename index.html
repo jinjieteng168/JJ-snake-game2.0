@@ -67,11 +67,13 @@
         ];
         
         let radius = 12;       
-        let speed = 4;         
+        let speed = 5;         
         let angle = 0;         
         let targetAngle = 0;   
         let score = 0;
-        let isGameOver = false; 
+        let growPending = 0; // 记录还需要长几节
+        let isGameOver = false;
+        growPending = 0;
 
         // Food Attributes
         let food = {
@@ -117,13 +119,21 @@
             let dx = head.x - food.x;
             let dy = head.y - food.y;
             let distance = Math.sqrt(dx * dx + dy * dy); 
-
-            if (distance < radius + food.radius) {
+if (distance < radius + food.radius) {
                 score += 10;
                 scoreEl.innerText = score.toString().padStart(3, '0');
                 respawnFood();
                 speed += 0.15; 
+                growPending += 3; // 吃一个，让蛇在接下来的移动中长 3 节！
+            }
+
+            // 控制变长的核心：如果还有待生长节数，就不砍尾巴（蛇变长）；否则像以前一样砍掉尾巴
+            if (growPending > 0) {
+                growPending--; // 长了一节，扣掉一次
             } else {
+                snake.pop(); // 正常移动，保持长度
+            }
+             else {
                 snake.pop();
             }
 
