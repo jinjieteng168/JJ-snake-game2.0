@@ -1,65 +1,9 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JJ snake game 2.0</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        body {
-            background: radial-gradient(circle, #1a1a2e 0%, #0f0c1b 100%);
-            color: #fff;
-            font-family: system-ui, -apple-system, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-        #game-container {
-            position: relative;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-            border-radius: 20px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        canvas {
-            display: block;
-            background: #110e1c;
-        }
-        #ui-layer {
-            position: absolute;
-            top: 25px;
-            left: 25px;
-            font-size: 28px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-shadow: 0 4px 8px rgba(0,0,0,0.5);
-            pointer-events: none;
-            font-family: monospace;
-        }
-    </style>
-</head>
-<body>
-
-    <div id="game-container">
-        <div id="ui-layer">SCORE: <span id="score">000</span></div>
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-    </div>
-
-    <script>
+<script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreEl = document.getElementById('score');
 
         // --- 核心配置 ---
-        // 高级感秘诀1：打破死板的网格！
-        // 蛇的身体由一系列连续的坐标点组成，移动是利用数学公式平滑插值，而不是每次跳30像素。
         let snake = [
             {x: 400, y: 300},
             {x: 385, y: 300},
@@ -67,18 +11,34 @@
             {x: 355, y: 300}
         ];
         
-        let radius = 12;       // 蛇身体各节的半径
-        let speed = 4;         // 每一帧移动的像素距离（数值越小越丝滑，越好控制）
-        let angle = 0;         // 当前移动的弧度（0表示向右）
-        let targetAngle = 0;   // 目标弧度（用来做平滑转向过渡）
+        let radius = 12;       
+        let speed = 4;         
+        let angle = 0;         
+        let targetAngle = 0;   
+        let score = 0;
 
-        // --- 游戏主循环 ---
+        // 食物属性
+        let food = {
+            x: 0,
+            y: 0,
+            radius: 8,
+            pulse: 1 
+        };
+
+        function respawnFood() {
+            food.x = Math.random() * (canvas.width - 100) + 50;
+            food.y = Math.random() * (canvas.height - 100) + 50;
+        }
+
+        // 初始化食物
+        respawnFood();
+
+        // --- 核心逻辑：数据更新 ---
         function update() {
-            // 1. 角度平滑过渡（高级感秘诀2：转向不是直角，而是有弧度的漂移感）
+            // 1. 角度平滑过渡
             let angleDiff = targetAngle - angle;
-            // 标准化角度差在 -PI 到 PI 之间
             angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-            angle += angleDiff * 0.2; // 0.2 是转向灵敏度，越小转向越圆滑
+            angle += angleDiff * 0.2; 
 
             // 2. 计算蛇头新位置
             let head = {
@@ -92,43 +52,88 @@
             if (head.y > canvas.height) head.y = 0;
             if (head.y < 0) head.y = canvas.height;
 
-            // 3. 更新蛇全身的位置
-            // 蛇头带路，后面的身体节数跟随前一节
             snake.unshift(head);
-            snake.pop(); // 暂时不吃东西，保持长度不变
+
+            // 3. 碰撞检测：吃到食物
+            let dx = head.x - food.x;
+            let dy = head.y - food.y;
+            let distance = Math.sqrt(dx * dx + dy * dy); 
+
+            if (distance < radius + food.radius) {
+                score += 10;
+                scoreEl.innerText = score.toString().padStart(3, '0');
+                respawnFood();
+                speed += 0.1; // 逐渐变快
+            } else {
+                snake.pop();
+            }
+
+            // 4. 自撞检测（从第15节开始算，给转弯留出空间）
+            for (let i = 15; i < snake.length; i++) {
+                let sDx = head.x - snake[i].x;
+                let sDy = head.y - snake[i].y;
+                let sDist = Math.sqrt(sDx * sDx + sDy * sDy);
+                if (sDist < radius * 0.8) {
+                    resetGame();
+                }
+            }
+
+            // 食物呼吸动效
+            food.pulse = 1 + Math.sin(Date.now() * 0.005) * 0.2;
         }
 
+        // 游戏重置
+        function resetGame() {
+            score = 0;
+            speed = 4;
+            angle = 0;
+            targetAngle = 0;
+            scoreEl.innerText = "000";
+            snake = [
+                {x: 400, y: 300},
+                {x: 385, y: 300},
+                {x: 370, y: 300},
+                {x: 355, y: 300}
+            ];
+            respawnFood();
+        }
+
+        // --- 核心逻辑：画面渲染 ---
         function draw() {
-            // 清画布（带有一点点尾迹魔幻效果）
             ctx.fillStyle = 'rgba(17, 14, 28, 0.3)'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 4. 绘制蛇（高级感秘诀3：发光渐变色 + 完美的圆形身躯）
+            // 绘蛇
             snake.forEach((segment, index) => {
                 ctx.beginPath();
                 ctx.arc(segment.x, segment.y, radius * (1 - index/snake.length * 0.3), 0, Math.PI * 2); 
-                // 身体越往后越细 (1 - index/snake.length * 0.3)
-                
-                // 渐变青蓝色
                 let alpha = 1 - (index / snake.length) * 0.5;
                 ctx.fillStyle = `rgba(0, 242, 254, ${alpha})`;
-                
-                // 发光特效
                 ctx.shadowBlur = index === 0 ? 20 : 0;
                 ctx.shadowColor = '#00f2fe';
-                
                 ctx.fill();
-                ctx.shadowBlur = 0; // 重置发光，避免影响其他绘制
+                ctx.shadowBlur = 0; 
             });
+
+            // 绘食物
+            ctx.beginPath();
+            let currentFoodRadius = food.radius * food.pulse;
+            ctx.arc(food.x, food.y, currentFoodRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff2a74';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff2a74';
+            ctx.fill();
+            ctx.shadowBlur = 0; 
         }
 
+        // --- 游戏主循环 ---
         function loop() {
-            update();
+            update(); // 现在的循环变得非常干净
             draw();
-            requestAnimationFrame(loop); // 使用系统原生帧率，极其丝滑
+            requestAnimationFrame(loop);
         }
 
-        // --- 键盘监听（支持iPad外接键盘） ---
+        // --- 键盘监听 ---
         window.addEventListener('keydown', (e) => {
             switch(e.key) {
                 case 'ArrowUp':    targetAngle = -Math.PI / 2; break;
@@ -138,8 +143,6 @@
             }
         });
 
-        // 启动游戏
+        // 启动
         loop();
     </script>
-</body>
-</html>
