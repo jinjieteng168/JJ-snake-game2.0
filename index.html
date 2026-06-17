@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JJ snake game </title>
+    <title> JJ snake game2.0</title>
     <style>
         * {
             box-sizing: border-box;
@@ -67,13 +67,12 @@
         ];
         
         let radius = 12;       
-        let speed = 5;         
+        let speed = 6;         // MODIFIED: Faster base speed (increased from 4 to 6)
         let angle = 0;         
         let targetAngle = 0;   
         let score = 0;
-        let growPending = 0; // 记录还需要长几节
-        let isGameOver = false;
-        growPending = 0;
+        let isGameOver = false; 
+        let growPending = 0;   // NEW: Queue tracker for multi-segment body growth
 
         // Food Attributes
         let food = {
@@ -107,7 +106,7 @@
                 y: snake[0].y + Math.sin(angle) * speed
             };
 
-            // Wall Collision -> Game Over
+            // Wall Collision Check
             if (head.x > canvas.width || head.x < 0 || head.y > canvas.height || head.y < 0) {
                 isGameOver = true;
                 return;
@@ -115,29 +114,27 @@
 
             snake.unshift(head);
 
-            // Food Collision
+            // Food Collision Check
             let dx = head.x - food.x;
             let dy = head.y - food.y;
             let distance = Math.sqrt(dx * dx + dy * dy); 
-if (distance < radius + food.radius) {
+
+            if (distance < radius + food.radius) {
                 score += 10;
                 scoreEl.innerText = score.toString().padStart(3, '0');
                 respawnFood();
                 speed += 0.15; 
-                growPending += 3; // 吃一个，让蛇在接下来的移动中长 3 节！
+                growPending += 3; // MODIFIED: Adds 3 segments to growth queue when food is eaten
             }
 
-            // 控制变长的核心：如果还有待生长节数，就不砍尾巴（蛇变长）；否则像以前一样砍掉尾巴
+            // Growth execution logic
             if (growPending > 0) {
-                growPending--; // 长了一节，扣掉一次
+                growPending--; // Grow body segment by skipping snake.pop()
             } else {
-                snake.pop(); // 正常移动，保持长度
-            }
-             else {
-                snake.pop();
+                snake.pop(); // Regular movement, keeps same length
             }
 
-            // Self Collision 
+            // Self Collision Check (starts from segment 15 to allow turning clearance)
             for (let i = 15; i < snake.length; i++) {
                 let sDx = head.x - snake[i].x;
                 let sDy = head.y - snake[i].y;
@@ -153,10 +150,11 @@ if (distance < radius + food.radius) {
 
         function resetGame() {
             score = 0;
-            speed = 4;
+            speed = 6; // MODIFIED: Resets to faster base speed
             angle = 0;
             targetAngle = 0;
             isGameOver = false;
+            growPending = 0; // NEW: Resets growth queue
             scoreEl.innerText = "000";
             snake = [
                 {x: 400, y: 300},
@@ -172,7 +170,7 @@ if (distance < radius + food.radius) {
             ctx.fillStyle = '#110e1c'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Draw Snake
+            // 1. Draw Cartoon Snake
             snake.forEach((segment, index) => {
                 ctx.beginPath();
                 
@@ -210,7 +208,7 @@ if (distance < radius + food.radius) {
                     ctx.fill();
 
                 } else {
-                    // Body
+                    // Body segments
                     let bodyRadius = radius * (1 - index / (snake.length + 10));
                     ctx.arc(segment.x, segment.y, bodyRadius, 0, Math.PI * 2);
                     ctx.fillStyle = index % 2 === 0 ? '#81c784' : '#4caf50';
@@ -230,7 +228,7 @@ if (distance < radius + food.radius) {
             ctx.fillText(food.type, 0, 0); 
             ctx.restore();
 
-            // 3. Draw Game Over Menu (All English)
+            // 3. Draw Game Over State Menu
             if (isGameOver) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -247,14 +245,14 @@ if (distance < radius + food.radius) {
             }
         }
 
-        // --- Loop ---
+        // --- Game Main Loop ---
         function loop() {
             update(); 
             draw();
             requestAnimationFrame(loop);
         }
 
-        // --- Controls: Keyboard ---
+        // --- Controls: Keyboard Listener ---
         window.addEventListener('keydown', (e) => {
             if (isGameOver) {
                 resetGame();
@@ -268,7 +266,7 @@ if (distance < radius + food.radius) {
             }
         });
 
-        // --- Controls: Touch ---
+        // --- Controls: iPad Touch Gesture Listener ---
         let touchStartX = 0;
         let touchStartY = 0;
 
@@ -297,7 +295,7 @@ if (distance < radius + food.radius) {
             }
         }, { passive: true });
 
-        // Start
+        // Fire up the game loop
         loop();
     </script>
 </body>
