@@ -140,6 +140,36 @@
                 case 'ArrowDown':  targetAngle = Math.PI / 2; break;
                 case 'ArrowLeft':  targetAngle = Math.PI; break;
                 case 'ArrowRight': targetAngle = 0; break;
+                            // --- 新增：iPad 触屏手势监听 ---
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        window.addEventListener('touchstart', (e) => {
+            // 记录手指刚碰屏幕时的坐标
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!touchStartX || !touchStartY) return;
+
+            let touchEndX = e.touches[0].clientX;
+            let touchEndY = e.touches[0].clientY;
+
+            // 计算滑动的 x 和 y 轴距离
+            let dx = touchEndX - touchStartX;
+            let dy = touchEndY - touchStartY;
+
+            // 只有当滑动距离大于 30 像素时才触发转向，防止误触
+            if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
+                // 利用数学公式 Math.atan2 直接算出手指滑动的绝对角度
+                targetAngle = Math.atan2(dy, dx);
+                
+                // 重置起点，方便连续滑动转向
+                touchStartX = touchEndX;
+                touchStartY = touchEndY;
+            }
+        }, { passive: true });
             }
         });
 
