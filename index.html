@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>卡通大眼贪吃蛇</title>
+    <title>卡通大眼贪吃蛇 - 挑战版</title>
     <style>
         * {
             box-sizing: border-box;
@@ -11,7 +11,8 @@
             padding: 0;
         }
         body {
-            background: radial-gradient(circle, #1a1a2e 0%, #0f0c1b 100%);
+            /* 升级：现代感、电竞风的深紫夜霓虹渐变背景 */
+            background: radial-gradient(circle, #251c4a 0%, #0e091a 100%);
             color: #fff;
             font-family: system-ui, -apple-system, sans-serif;
             display: flex;
@@ -71,14 +72,15 @@
         let angle = 0;         
         let targetAngle = 0;   
         let score = 0;
+        let isGameOver = false; // 记录游戏是否结束
 
         // 卡通食物属性
         let food = {
             x: 0,
             y: 0,
-            radius: 16, // 碰撞半径稍微放大，适应 Emoji 的大小
+            radius: 16, 
             pulse: 1,
-            type: '🍎'   // 当前的食物图标
+            type: '🍎'   
         };
 
         // 随机卡通食物池
@@ -87,16 +89,17 @@
         function respawnFood() {
             food.x = Math.random() * (canvas.width - 100) + 50;
             food.y = Math.random() * (canvas.height - 100) + 50;
-            // 每次生成随机换一个食物
             food.type = foodPool[Math.floor(Math.random() * foodPool.length)];
         }
 
-        // 初始化食物
+        // 初始化第一个食物
         respawnFood();
 
         // --- 核心逻辑：数据更新 ---
         function update() {
-            // 角度平滑过渡
+            if (isGameOver) return; // 如果死掉了，停止更新数据
+
+            // 角度平滑漂移过渡
             let angleDiff = targetAngle - angle;
             angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
             angle += angleDiff * 0.2; 
@@ -107,15 +110,15 @@
                 y: snake[0].y + Math.sin(angle) * speed
             };
 
-            // 穿墙检测
-            if (head.x > canvas.width) head.x = 0;
-            if (head.x < 0) head.x = canvas.width;
-            if (head.y > canvas.height) head.y = 0;
-            if (head.y < 0) head.y = canvas.height;
+            // 1. 边缘检测 -> 改为撞墙死 Game Over
+            if (head.x > canvas.width || head.x < 0 || head.y > canvas.height || head.y < 0) {
+                isGameOver = true;
+                return;
+            }
 
             snake.unshift(head);
 
-            // 碰撞检测：吃食物
+            // 2. 碰撞检测：吃到食物
             let dx = head.x - food.x;
             let dy = head.y - food.y;
             let distance = Math.sqrt(dx * dx + dy * dy); 
@@ -124,18 +127,19 @@
                 score += 10;
                 scoreEl.innerText = score.toString().padStart(3, '0');
                 respawnFood();
-                speed += 0.1; // 慢慢加速
+                speed += 0.15; // 每次吃到水果，速度加成稍微明显一点
             } else {
                 snake.pop();
             }
 
-            // 自撞检测（从第15节开始，留出转弯半径）
+            // 3. 自撞检测（从第15节开始算，给头部转弯留足圆弧空间）
             for (let i = 15; i < snake.length; i++) {
                 let sDx = head.x - snake[i].x;
                 let sDy = head.y - snake[i].y;
                 let sDist = Math.sqrt(sDx * sDx + sDy * sDy);
                 if (sDist < radius * 0.8) {
-                    resetGame();
+                    isGameOver = true; // 咬到自己，进入 Game Over 状态
+                    return;
                 }
             }
 
@@ -143,12 +147,13 @@
             food.pulse = 1 + Math.sin(Date.now() * 0.005) * 0.15;
         }
 
-        // 游戏重置
+        // 游戏重置复活函数
         function resetGame() {
             score = 0;
             speed = 4;
             angle = 0;
             targetAngle = 0;
+            isGameOver = false;
             scoreEl.innerText = "000";
             snake = [
                 {x: 400, y: 300},
@@ -161,22 +166,22 @@
 
         // --- 核心逻辑：画面渲染 ---
         function draw() {
-            // 卡通风格用纯色清理画布，画面更干净
+            // 清理画布
             ctx.fillStyle = '#110e1c'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 1. 绘制蛇身
+            // 1. 绘制卡通蛇
             snake.forEach((segment, index) => {
                 ctx.beginPath();
                 
                 if (index === 0) {
-                    // 【蛇头】
-                    ctx.arc(segment.x, segment.y, radius * 1.3, 0, Math.PI * 2); // 蛇头大一圈
+                    // 【画蛇头】
+                    ctx.arc(segment.x, segment.y, radius * 1.3, 0, Math.PI * 2); 
                     ctx.fillStyle = '#4caf50'; // 卡通绿
                     ctx.fill();
 
-                    // 绘制一双会跟着前进方向转动的大眼睛
-                    let eyeOffsetAngle = 0.5; // 左右眼张开角度
+                    // 绘制一双会随着前进方向灵活转动的大眼睛
+                    let eyeOffsetAngle = 0.5; 
                     
                     // 左眼
                     let leftEyeX = segment.x + Math.cos(angle - eyeOffsetAngle) * 10;
@@ -203,12 +208,11 @@
                     ctx.fill();
 
                 } else {
-                    // 【蛇身】
-                    // 身体越往后越细一点
+                    // 【画蛇身】
                     let bodyRadius = radius * (1 - index / (snake.length + 10));
                     ctx.arc(segment.x, segment.y, bodyRadius, 0, Math.PI * 2);
                     
-                    // 深绿和浅绿相间的卡通斑马纹身体
+                    // 深绿和浅绿相间的卡通花纹身体
                     ctx.fillStyle = index % 2 === 0 ? '#81c784' : '#4caf50';
                     ctx.fill();
                 }
@@ -218,24 +222,47 @@
             ctx.save();
             ctx.translate(food.x, food.y);
             let currentScale = food.pulse;
-            ctx.scale(currentScale, currentScale); // 呼吸动效
+            ctx.scale(currentScale, currentScale); 
             
             ctx.font = "34px serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(food.type, 0, 0); 
             ctx.restore();
+
+            // 3. 绘制 Game Over 遮罩大弹窗
+            if (isGameOver) {
+                // 黑色半透明滤镜
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // GAME OVER 霓虹粉大字
+                ctx.fillStyle = '#ff2a74';
+                ctx.font = 'bold 60px system-ui, -apple-system';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
+
+                // 重新开始提示
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '22px system-ui, -apple-system';
+                ctx.fillText('轻触屏幕或按键盘重新开始', canvas.width / 2, canvas.height / 2 + 40);
+            }
         }
 
-        // --- 游戏循环 ---
+        // --- 游戏主循环 ---
         function loop() {
             update(); 
             draw();
             requestAnimationFrame(loop);
         }
 
-        // --- 键盘监听 ---
+        // --- 键盘监听（支持外接键盘） ---
         window.addEventListener('keydown', (e) => {
+            if (isGameOver) {
+                resetGame();
+                return;
+            }
             switch(e.key) {
                 case 'ArrowUp':    targetAngle = -Math.PI / 2; break;
                 case 'ArrowDown':  targetAngle = Math.PI / 2; break;
@@ -249,12 +276,17 @@
         let touchStartY = 0;
 
         window.addEventListener('touchstart', (e) => {
+            // 如果处于 Game Over 状态，点击屏幕直接重新开始复活
+            if (isGameOver) {
+                resetGame();
+                return;
+            }
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
         }, { passive: true });
 
         window.addEventListener('touchmove', (e) => {
-            if (!touchStartX || !touchStartY) return;
+            if (!touchStartX || !touchStartY || isGameOver) return;
 
             let touchEndX = e.touches[0].clientX;
             let touchEndY = e.touches[0].clientY;
