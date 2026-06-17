@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title> JJ snake game2.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Cartoon Snake - Phone Edition</title>
     <style>
         * {
             box-sizing: border-box;
@@ -20,7 +20,10 @@
             justify-content: center;
             min-height: 100vh;
             overflow: hidden;
+            /* 允许非冲突的触屏行为 */
             touch-action: none; 
+            -webkit-user-select: none; /* 防止手机上长按变蓝选中文本 */
+            user-select: none;
         }
         #game-container {
             position: relative;
@@ -28,16 +31,22 @@
             border-radius: 20px;
             overflow: hidden;
             border: 1px solid rgba(255,255,255,0.1);
+            /* 优化：让画布在手机上最大宽度为 100%，自动等比例缩小，不会滑出屏幕 */
+            width: 95vw;
+            max-width: 800px;
+            aspect-ratio: 4 / 3; 
         }
         canvas {
             display: block;
             background: #110e1c;
+            width: 100%;
+            height: 100%;
         }
         #ui-layer {
             position: absolute;
-            top: 25px;
-            left: 25px;
-            font-size: 28px;
+            top: 15px;
+            left: 15px;
+            font-size: 20px; /* 稍微缩小一点，适合手机 */
             font-weight: 800;
             letter-spacing: 1px;
             text-shadow: 0 4px 8px rgba(0,0,0,0.5);
@@ -67,12 +76,12 @@
         ];
         
         let radius = 12;       
-        let speed = 6;         // MODIFIED: Faster base speed (increased from 4 to 6)
+        let speed = 6;         
         let angle = 0;         
         let targetAngle = 0;   
         let score = 0;
         let isGameOver = false; 
-        let growPending = 0;   // NEW: Queue tracker for multi-segment body growth
+        let growPending = 0;   
 
         // Food Attributes
         let food = {
@@ -124,17 +133,16 @@
                 scoreEl.innerText = score.toString().padStart(3, '0');
                 respawnFood();
                 speed += 0.15; 
-                growPending += 3; // MODIFIED: Adds 3 segments to growth queue when food is eaten
+                growPending += 3; 
             }
 
-            // Growth execution logic
             if (growPending > 0) {
-                growPending--; // Grow body segment by skipping snake.pop()
+                growPending--; 
             } else {
-                snake.pop(); // Regular movement, keeps same length
+                snake.pop(); 
             }
 
-            // Self Collision Check (starts from segment 15 to allow turning clearance)
+            // Self Collision Check
             for (let i = 15; i < snake.length; i++) {
                 let sDx = head.x - snake[i].x;
                 let sDy = head.y - snake[i].y;
@@ -150,11 +158,11 @@
 
         function resetGame() {
             score = 0;
-            speed = 6; // MODIFIED: Resets to faster base speed
+            speed = 6; 
             angle = 0;
             targetAngle = 0;
             isGameOver = false;
-            growPending = 0; // NEW: Resets growth queue
+            growPending = 0; 
             scoreEl.innerText = "000";
             snake = [
                 {x: 400, y: 300},
@@ -216,7 +224,7 @@
                 }
             });
 
-            // 2. Draw Food (Emoji)
+            // 2. Draw Food
             ctx.save();
             ctx.translate(food.x, food.y);
             let currentScale = food.pulse;
@@ -228,24 +236,23 @@
             ctx.fillText(food.type, 0, 0); 
             ctx.restore();
 
-            // 3. Draw Game Over State Menu
+            // 3. Draw Game Over Menu
             if (isGameOver) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 ctx.fillStyle = '#ff2a74';
-                ctx.font = 'bold 60px system-ui, -apple-system';
+                ctx.font = 'bold 45px system-ui, -apple-system'; // 手机端稍微缩小字体
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
 
                 ctx.fillStyle = '#ffffff';
-                ctx.font = '22px system-ui, -apple-system';
-                ctx.fillText('TAP SCREEN OR PRESS ANY KEY TO RESTART', canvas.width / 2, canvas.height / 2 + 40);
+                ctx.font = '16px system-ui, -apple-system'; // 手机端稍微缩小字体
+                ctx.fillText('TAP SCREEN TO RESTART', canvas.width / 2, canvas.height / 2 + 40);
             }
         }
 
-        // --- Game Main Loop ---
         function loop() {
             update(); 
             draw();
@@ -266,7 +273,7 @@
             }
         });
 
-        // --- Controls: iPad Touch Gesture Listener ---
+        // --- Controls: Fixed Touch Listener for Phones ---
         let touchStartX = 0;
         let touchStartY = 0;
 
@@ -275,6 +282,7 @@
                 resetGame();
                 return;
             }
+            // 记录手机手指碰触位置
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
         }, { passive: true });
@@ -288,14 +296,15 @@
             let dx = touchEndX - touchStartX;
             let dy = touchEndY - touchStartY;
 
-            if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
+            // 核心优化：降低触发门槛（大于10像素就立刻转向），让手机短距离划动更灵敏
+            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
                 targetAngle = Math.atan2(dy, dx); 
+                // 实时更新起点，让连续的手势划动极度跟手
                 touchStartX = touchEndX;
                 touchStartY = touchEndY;
             }
         }, { passive: true });
 
-        // Fire up the game loop
         loop();
     </script>
 </body>
